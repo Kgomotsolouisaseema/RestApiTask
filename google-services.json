@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "855903106452",
+    "project_id": "audiojournal-30ab9",
+    "storage_bucket": "audiojournal-30ab9.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:855903106452:android:01c3860302e021db24cb81",
+        "android_client_info": {
+          "package_name": "Audio.journal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "855903106452-ugtkql6u4pq9p64vns11c3tvc2f3qcji.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqu3bh-ugSZbwwGajYSZwtaNveLp7pQmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "855903106452-ugtkql6u4pq9p64vns11c3tvc2f3qcji.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
