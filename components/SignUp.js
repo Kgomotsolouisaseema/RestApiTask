@@ -1,35 +1,54 @@
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
-import {StyleSheet, TextInput, TouchableOpacity,Text,View,Pressable,Image} from "react-native";
-import { auth  } from "../Firebase";
-import { createUserWithEmailAndPassword  } from "firebase/auth";
+import {StyleSheet, TextInput, TouchableOpacity,Text,View,Pressable,Image , Alert} from "react-native";
 
 
 export default function SignUp() {
-  const navigation = useNavigation();
 
-  // const navigatetoAudioJournal =() =>{
-  //   navigation.navigate("AudioJournal") //navigate to signIn page
-  //   console.log("Proceed btn pressed ,to Audi Journal")
-  // };
+  const navigation = useNavigation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
   
 
-//Functions for buttons 
-  const handleSubmit = async () => {
-    try{
-      await  createUserWithEmailAndPassword( auth ,email, password).then(()=>{
-        console.log("SignUp BTN clicked");
-        navigation.navigate("AudioJournal") //navigate to signIn page
-      })
-      }catch(error){
-        console.error("Error" , error)
+  const  signUpWithEmail = () =>{
+    //constructing the request payload (body of the communication) this is my endpoint everything from request body to body: JSON.stringify(requestBody), 
+    const requestBody = {
+      email: email ,
+      password: password,
+      returnSecureToken : true,
+    };
+
+    //make POST request to Firebase REST API FOR EMAIL AND PASSWORD sign-in . This is my 
+    fetch(`${firebaseBaseUrl}:signUp?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`,{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then((response)=> response.json())
+    .then((data)=>{
+      console.log("Response from Firebase:" , data); //Response data log
+      if(data.idToken){
+        //Succefull sign-in , navigate to the next screen
+        navigation.navigate("AudioJournal");
+      }else{
+        Alert.alert("Error siging in");
+        console.log("Error signing in " , data.error)
       }
-   
+    })
+    .catch((error)=>{
+      Alert.alert("Error signing in");
+      console.log("Error signing in" , error);
+    });
+
   };
+
+
 
   const handleSignUp = async () =>{
    
@@ -76,7 +95,7 @@ export default function SignUp() {
            
             <Pressable
               style={styles.actionButton}
-              onPress={() => handleSubmit()}
+              onPress={signUpWithEmail}
             >
               <Text style={styles.signIn}>SIGN UP</Text>
             </Pressable>

@@ -10,34 +10,87 @@ import {
   Image,
   Alert,
 } from "react-native";
-import { auth, googleProvider } from "../Firebase";
-import {
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  onAuthStateChanged,
-} from "firebase/auth";
+
 import googleButton from "../assets/googleButton.png";
 
 export default function SignIn() {
   const navigation = useNavigation();
-
-
-
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        //user is not signed in , navigate to audiojournal
+   const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
+
+
+  useEffect(()=>{
+
+    const firebaseAuthCheckUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`;
+
+    //Make a get request to the Firebase Authentication REST API
+
+    fetch(firebaseAuthCheckUrl , {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idToken: "USER_ID_TOKEN" , //REPLACE WITH ACTUAL USER ID TOKEN
+        
+      }),
+    })
+    .then((response)=> response.json())
+    .then((data)=>{
+      if(data.users && data.users.length > 0){
+        //User is authenticated, navigate to the "Audio Journal" page
         navigation.navigate("AudioJournal");
-      } else {
-        Alert.alert("user sigend in");
+      }else{
+        //User not Authenticated 
+        Alert.alert("User not signed in");
       }
+    })
+    .catch((error)=>{
+      Alert.alert("Error checking authentication state");
+      console.log("Error checking authentication state", error);
+    })
+
+  },[])
+ 
+
+  const  signInWithEmail = () =>{
+    //constructing the request payload (body of the communication)
+    const requestBody = {
+      email: email ,
+      password: password,
+      returnSecureToken : true,
+    };
+
+    //make POST request to Firebase REST API FOR EMAIL AND PASSWORD sign-in
+    fetch(`${firebaseBaseUrl}:signInWithPassword?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`,{
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then((response)=> response.json())
+    .then((data)=>{
+      if(data.idToken){
+        //Succefull sign-in , navigate to the next screen
+        navigation.navigate("AudioJournal");
+      }else{
+        Alert.alert("Error siging in");
+        console.log("Error signing in " , data.error)
+      }
+    })
+    .catch((error)=>{
+      Alert.alert("Error signing in");
+      console.log("Error signing in" , error);
     });
-    //clean up subscription when component mounts
-    return () => unsubscribe();
-  }, []); //Empty dependency
+
+  };
+
+
+  //Other Functions to  handle signing in Buttons 
 
   const handleSignUp = () => {
     navigation.navigate("SignUp"); //navigate to signIn page
@@ -48,27 +101,11 @@ export default function SignIn() {
     console.log("password forgot");
   };
 
-  const signinPg = () => {
-    signInWithEmailAndPassword(auth, email, password)
-      .then(() => {
-        console.log("Proceed btn pressed to Audio Journal");
-        navigation.navigate("AudioJournal"); //navigate to signIn page
-      })
-      .catch((error) => {
-        Alert.alert("Error siging In ");
-        console.log("Error siging In ", error);
-      });
-  }; // signing end bracket
 
   const signinwithgoogle = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-      navigation.navigate("AudioJournal"); //navigate to signIn page
-      console.log("Proceed btn pressed ,to Audi Journal");
-    } catch (error) {
-      console.error("Error signing in with Google", error);
-    }
-  }; //google end bracket
+    console.log("Sign in with google")
+    //Implement this logic when your all done and you are adding touches to your project , usign Rest API 
+  }; 
 
   return (
     <View style={styles.container}>
@@ -94,7 +131,7 @@ export default function SignIn() {
             />
           </View>
           <View style={styles.actionContainer}>
-            <Pressable style={styles.actionButton} onPress={() => signinPg()}>
+            <Pressable style={styles.actionButton} onPress={signInWithEmail}>
               <Text style={styles.signIn}>SIGN IN </Text>
             </Pressable>
 

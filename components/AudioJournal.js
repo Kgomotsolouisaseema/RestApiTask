@@ -11,18 +11,18 @@ import {
 import { Audio, getStatusAsync } from "expo-av";
 import theicon from "../assets/theicon.jpg";
 import { TouchableOpacity } from "react-native";
-import { auth, db, signout } from "../Firebase";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  getDocs,
-  doc,
-} from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
-// import { Platform } from "react-native";
+// import { auth, db, signout } from "../Firebase";
+// import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+// import {
+//   collection,
+//   addDoc,
+//   updateDoc,
+//   deleteDoc,
+//   getDocs,
+//   doc,
+// } from "firebase/firestore";
+// import { onIdTokenChanged } from "firebase/auth";
+// import { onAuthStateChanged } from "firebase/auth";
 
 const RecordingOptions = {
   isMeteringEnabled: true,
@@ -51,56 +51,96 @@ const RecordingOptions = {
   },
 };
 
+const projectId = "audio-recorder-restapi"
+const apiKey = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g"
+const collectionName = "Recordings"
+
 const AudioRecorder = () => {
   const navigation = useNavigation();
 
   const [currentUser, setUser] = useState(null);
   const [recording, setRecording] = useState(null);
-  // const [title, setTitle] = useState("");
   const [audioTitle, setAudioTitle] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [selectedAudioURL, setSelectedAudioURL] = useState(null);
-  const [recordings, setRecordings] = useState([
-    { id: 1, title: "Recording 1" },
-  ]);
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordings, setRecordings] = useState([{ id: 1, title: "Recording 1" },]);
+  // const [isRecording, setIsRecording] = useState(false);
   const [sound, setSound] = useState(null);
 
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) {
-      onAuthStateChanged(auth, (user) => {
-        setUser(user);
+  // const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
+
+  // useEffect(() => {
+  //   const firebaseAuthCheckUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+
+  //   // const checkUserAuthenticated = async () => {
+  //   //   try {
+  //   //     const user = auth.currentUser;
+  //   //     if (!user) {
+  //   //       //User is not authenticated ,set user to null and return
+  //   //       setUser(null);
+  //   //       return;
+  //   //     }
+  //   //     //Retrieve the id token
+  //   //     const idToken = await user.getIdToken();
+  //   //     //make a GET request to your REST API TO CHECK if user is authenticated
+  //   //     const response = await fetch(firebaseAuthCheckUrl, {
+  //   //       method: "GET", //useing GET method for retrieving data
+  //   //       headers: {
+  //   //         "Content-Type ": "application/json",
+  //   //         //Include the ID token in the authentication header
+  //   //         Authorization: `Bearer ${idToken}`,
+  //   //       },
+  //   //       //
+  //   //       body: JSON.stringify({
+  //   //         currentUser: user.uid,
+  //   //       }),
+  //   //     });
+  //   //     if (response.ok) {
+  //   //       //user authenticated ,  handle response or set user
+  //   //       const data = await response.json();
+  //   //       setUser(data.user); //Update the user state the authenticated user data
+  //   //     } else {
+  //   //       //user not authenticated
+  //   //       setUser(null);
+  //   //     }
+  //   //   } catch (error) {
+  //   //     console.error("Error checking user authentication:", error);
+  //   //   }
+  //   // };
+
+  //   // checkUserAuthenticated();
+  // }, []);
+
+  const loadRecordings = async () => {
+
+    try{
+      const firestoreDatafetch = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+      //Make a Get request to your REST API endpoint to fetch recordings
+      const response = await fetch(firestoreDatafetch,{
+        method : "GET",
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
       });
-    } else {
-      console.log("user logged in ", user);
-    }
-  }, []);
+      if(response.ok){
+        //if the response is successfull (status code 200),parse the JSON data 
+        const data = await response.json();
 
-  console.log("Userlogged in");
-
-  useEffect(() => {
-    // Load recordings from Firebase Firestore when the component mounts
-    const loadRecordings = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "recordings"));
-        const loadedRecordings = [];
-        querySnapshot.forEach((doc) => {
-          loadedRecordings.push({
-            id: doc.id,
-            title: doc.data().title,
-            recording: doc.recording,
-            // Add other fields you want to retrieve from Firestore here
-          });
-        });
-        setRecordings(loadedRecordings);
-      } catch (error) {
-        console.log("Error loading recordings", error);
+        //Assume dthat the api response returns an array of recordings 
+        setRecordings(data); //update state with loaded recordeings 
+      }else{
+        console.error("Error loading recordings:" , response.statusText);
       }
-    };
+    }catch(error){
+      console.error("Error loading recordings: " , error);
+    }
+  };
 
-    loadRecordings();
-  }, []);
+
+ useEffect(()=>{
+  loadRecordings();
+ },[]);
 
   //trying these start and stop functions
 
@@ -126,6 +166,7 @@ const AudioRecorder = () => {
   }
 
   async function stopRecording() {
+    
     console.log("Stopping recording..");
 
     if (!recording) {
@@ -145,30 +186,44 @@ const AudioRecorder = () => {
       const uri = recording.getURI();
       console.log("Recording stopped and stored at", uri);
 
-      // Upload audio to Firebase Storage
-      const storage = getStorage();
-      const audioFileRef = ref(storage, `audioRecordings/${Date.now()}.m4a`);
-      const recordingBlob = await fetch(uri).then((res) => res.blob());
+      // Create a FormData object to send the recording data
+      const formData = new FormData();
+      formData.append("audio",{
+        uri: uri,
+        type: "audio/m4a",
+        name: `${Date.now()}.m4a`,
+      });
 
-      await uploadBytes(audioFileRef, recordingBlob, {
-        contentType: "audio/m4a",
-      }); //.then() this is where you will use the getdownload url and then you will have a function that (adddoc) that takes the items to firstore
-      const downloadURL = await getDownloadURL(audioFileRef);
-      console.log("File upload success", downloadURL);
-      //im creating a new object with title and url of the audio  here
-      const addAudio = await addDoc(collection(db, "recordings"), {
-        title: audioTitle,
-        url: downloadURL,
-      }); //upload the audio title and url to firestore
-      setRecording(""); //reset the audio
-      setAudioTitle(""); //reset the title
+      //Send the FormData to your Rest API 
+      const firebaseEndpoint =  `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+      
+      const response = await fetch(firebaseEndpoint,{
+        method: "POST",
+        body: formData,
+      });
+
+      if(response){
+
+        //successfully uploaded recording to your API 
+        const responseData = await response.json();
+        console.log("Recording uploading success:" , responseData);
+
+
+      }else{
+        //handle the error 
+        console.error("Error uploading recording:" , response.statusText);
+      }
+    
+      //Reset the audio and title
+      setRecording(null);
+      setAudioTitle(" ");
 
       // Now, you can save the URL to Firebase Firestore or perform other actions as needed
     } catch (error) {
       console.error("Error stopping or uploading recording:", error);
       // Handle the error as needed
     }
-  }
+  };
 
   //Playing Sounds
   async function playSound(downloadURL) {
@@ -204,8 +259,6 @@ const AudioRecorder = () => {
     console.log("edit btn clicked ");
     setEditTitle(index);
     setAudioTitle(recordings[index].title);
-
-
   };
 
   //edit title function

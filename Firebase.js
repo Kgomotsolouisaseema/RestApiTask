@@ -8,13 +8,13 @@ import { getStorage,ref} from "firebase/storage";
 
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBodJkJaJxMgPfvAnpl2S0jBTG-T1MLtPE",
-  authDomain: "audiojournal-bfa2a.firebaseapp.com",
-  projectId: "audiojournal-bfa2a",
-  storageBucket: "audiojournal-bfa2a.appspot.com",
-  messagingSenderId: "616786219068",
-  appId: "1:616786219068:web:4a7a14857e47ccc5c67339",
-  measurementId: "G-8TNMLWNEY6"
+  apiKey: "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g",
+  authDomain: "audio-recorder-restapi.firebaseapp.com",
+  projectId: "audio-recorder-restapi",
+  storageBucket: "audio-recorder-restapi.appspot.com",
+  messagingSenderId: "848539386598",
+  appId: "1:848539386598:web:83952fa5c089837d2e3127",
+  measurementId: "G-KTCJMS2MPF"
 };
 
 
