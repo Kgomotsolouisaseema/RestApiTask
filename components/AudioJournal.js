@@ -7,22 +7,11 @@ import {
   FlatList,
   TextInput,
   Image,
+  Alert,
 } from "react-native";
 import { Audio, getStatusAsync } from "expo-av";
 import theicon from "../assets/theicon.jpg";
 import { TouchableOpacity } from "react-native";
-// import { auth, db, signout } from "../Firebase";
-// import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-// import {
-//   collection,
-//   addDoc,
-//   updateDoc,
-//   deleteDoc,
-//   getDocs,
-//   doc,
-// } from "firebase/firestore";
-// import { onIdTokenChanged } from "firebase/auth";
-// import { onAuthStateChanged } from "firebase/auth";
 
 const RecordingOptions = {
   isMeteringEnabled: true,
@@ -51,9 +40,10 @@ const RecordingOptions = {
   },
 };
 
-const projectId = "audio-recorder-restapi"
-const apiKey = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g"
-const collectionName = "Recordings"
+const projectId = "audio-recorder-restapi";
+const apiKey = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g";
+const collectionName = "Recordings";
+const  storageBucket= "audio-recorder-restapi.appspot.com";
 
 const AudioRecorder = () => {
   const navigation = useNavigation();
@@ -63,86 +53,90 @@ const AudioRecorder = () => {
   const [audioTitle, setAudioTitle] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [selectedAudioURL, setSelectedAudioURL] = useState(null);
-  const [recordings, setRecordings] = useState([{ id: 1, title: "Recording 1" },]);
+  const [recordings, setRecordings] = useState([
+    { id: 1, title: "Recording 1" },
+  ]);
   // const [isRecording, setIsRecording] = useState(false);
   const [sound, setSound] = useState(null);
 
   // const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
 
+  useEffect(() => {
+    const firebaseAuthCheckUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+
+    // `https://firestore.googleapis.com/v1/projects/audio-recorder-restapi/databases/(default)/documents/Recordings?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`;
+
+
+    const checkUserAuthenticated = async () => {
+      try {
+        const user = currentUser;
+        if (!user) {
+          //User is not authenticated ,set user to null and return
+          setUser(null);
+          return;
+        }
+        //Retrieve the id token
+        const idToken = await user.getIdToken();
+        //make a GET request to your REST API TO CHECK if user is authenticated
+        const response = await fetch(firebaseAuthCheckUrl, {
+          method: "GET", //using GET method for retrieving data
+          headers: {
+            "Content-Type ": "application/json",
+            //Include the ID token in the authentication header
+            Authorization: `Bearer ${idToken}`,
+          },
+
+          body: JSON.stringify({
+            currentUser: user.uid,
+          }),
+        });
+        if (response.ok) {
+          //user authenticated ,  handle response or set user
+          const data = await response.json();
+          setUser(data.user); //Update the user state the authenticated user data
+        } else {
+          //user not authenticated
+          setUser(null);
+        }
+      } catch (error) {
+        console.error("Error checking user authentication:", error);
+      }
+    };
+
+    checkUserAuthenticated();
+  }, []);
+
+  // const loadRecordings = async () => {
+  //   try {
+  //     console.log("loading recordings function")
+  //     const firestoreDatafetch = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+  //     //Make a Get request to your REST API endpoint to fetch recordings
+  //     const response = await fetch(firestoreDatafetch, {
+  //       method: "GET",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //         Accept: "application/json",
+  //       },
+  //     });
+  //     if (response.ok) {
+  //       //if the response is successfull (status code 200),parse the JSON data
+  //       const data = await response.json();
+
+  //       //Assume that the api response returns an array of recordings
+  //       setRecording(data); //update state with loaded recordeings
+  //     } else {
+  //       console.error("Error loading recordings:", response.statusText);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error loading recordings: ", error);
+  //   }
+  // };
+
   // useEffect(() => {
-  //   const firebaseAuthCheckUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
-
-  //   // const checkUserAuthenticated = async () => {
-  //   //   try {
-  //   //     const user = auth.currentUser;
-  //   //     if (!user) {
-  //   //       //User is not authenticated ,set user to null and return
-  //   //       setUser(null);
-  //   //       return;
-  //   //     }
-  //   //     //Retrieve the id token
-  //   //     const idToken = await user.getIdToken();
-  //   //     //make a GET request to your REST API TO CHECK if user is authenticated
-  //   //     const response = await fetch(firebaseAuthCheckUrl, {
-  //   //       method: "GET", //useing GET method for retrieving data
-  //   //       headers: {
-  //   //         "Content-Type ": "application/json",
-  //   //         //Include the ID token in the authentication header
-  //   //         Authorization: `Bearer ${idToken}`,
-  //   //       },
-  //   //       //
-  //   //       body: JSON.stringify({
-  //   //         currentUser: user.uid,
-  //   //       }),
-  //   //     });
-  //   //     if (response.ok) {
-  //   //       //user authenticated ,  handle response or set user
-  //   //       const data = await response.json();
-  //   //       setUser(data.user); //Update the user state the authenticated user data
-  //   //     } else {
-  //   //       //user not authenticated
-  //   //       setUser(null);
-  //   //     }
-  //   //   } catch (error) {
-  //   //     console.error("Error checking user authentication:", error);
-  //   //   }
-  //   // };
-
-  //   // checkUserAuthenticated();
+  //   loadRecordings();
   // }, []);
 
-  const loadRecordings = async () => {
-
-    try{
-      const firestoreDatafetch = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
-      //Make a Get request to your REST API endpoint to fetch recordings
-      const response = await fetch(firestoreDatafetch,{
-        method : "GET",
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      });
-      if(response.ok){
-        //if the response is successfull (status code 200),parse the JSON data 
-        const data = await response.json();
-
-        //Assume dthat the api response returns an array of recordings 
-        setRecordings(data); //update state with loaded recordeings 
-      }else{
-        console.error("Error loading recordings:" , response.statusText);
-      }
-    }catch(error){
-      console.error("Error loading recordings: " , error);
-    }
-  };
-
-
- useEffect(()=>{
-  loadRecordings();
- },[]);
-
-  //trying these start and stop functions
+  
 
   async function startRecording() {
     try {
@@ -165,8 +159,20 @@ const AudioRecorder = () => {
     }
   }
 
+  const timeoutDuration = 300000; // Timeout duration in milliseconds
+
+  // Define a function to create a timeout promise
+  function createTimeoutPromise(timeout) {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timed out")); // You can customize the error message
+      }, timeout);
+    });
+  }
+
+  const timeoutPromise = createTimeoutPromise(timeoutDuration);
+
   async function stopRecording() {
-    
     console.log("Stopping recording..");
 
     if (!recording) {
@@ -175,55 +181,126 @@ const AudioRecorder = () => {
     }
 
     try {
-      // Stop the recording
+      //stop the recording here
       await recording.stopAndUnloadAsync();
 
-      // Set audio mode to disallow recording (if needed)
+      //SET AUDIO MODE TO DISALLOW RECORDING
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
 
-      const uri = recording.getURI();
-      console.log("Recording stopped and stored at", uri);
+        const {status } = await recording.createNewLoadedSoundAsync();
+        
+        // console.log("Recording uploading success:", responseData);
 
-      // Create a FormData object to send the recording data
-      const formData = new FormData();
-      formData.append("audio",{
-        uri: uri,
-        type: "audio/m4a",
-        name: `${Date.now()}.m4a`,
-      });
+        const uri = recording.getURI();
 
-      //Send the FormData to your Rest API 
-      const firebaseEndpoint =  `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
-      
-      const response = await fetch(firebaseEndpoint,{
-        method: "POST",
-        body: formData,
-      });
+        // Fetch the audio recording file as a Blob
+        const recordingBlob = await fetch(uri).then((res) => res.blob());
 
-      if(response){
+         // SAVING TO FIREBASE STORAGE ALSO
+         const storageEndpoint = `https://firebasestorage.googleapis.com/v1/b/${storageBucket}/o/${encodeURIComponent(audioTitle)}`;
 
-        //successfully uploaded recording to your API 
-        const responseData = await response.json();
-        console.log("Recording uploading success:" , responseData);
+         const storageResponse = await fetch(storageEndpoint, {
+           method: "POST",
+          headers: {"Content-Type": "application/json"},
+           body: recordingBlob,
+         });
+
+         const data = await storageResponse.json();
+         console.log(data)
+         try {
+            let recordingUrl = ""
+             const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(audioTitle)}?alt=media&token=${data.downloadTokens}`;
+             recordingUrl = downloadUrl;
+             console.log('File uploaded successfully. Download URL:', recordingUrl);
+             setSelectedAudioURL(recordingUrl);
+         } catch (err){
+             console.log('File did not upload' , err);
+         }
 
 
-      }else{
-        //handle the error 
-        console.error("Error uploading recording:" , response.statusText);
-      }
-    
-      //Reset the audio and title
+        //MAKE AN POST REQUEST TO CREATE A NEW DOCUMENT IN FIRESTORE
+        const firestoreEndpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?&key=${apiKey}`;
+       const audipUrl = '12'
+        const firestoreData = {
+          "fields": {
+            "title": { 
+            "stringValue": `${audioTitle}` 
+          },
+          "duration": {
+            "stringValue":`${getDurationFormatted(status.durationMillis)}`
+          },
+            "url": {
+              "stringValue": `${selectedAudioURL}`
+            }
+          }
+        };
+
+        const firestoreResponse = await fetch(firestoreEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(firestoreData),
+        });
+
+
+       
+
+        if (storageResponse) {
+          //Succefully uploaded the audio to firebase storage
+          console.log("Audio recording uploaded to firebase storage.");
+        } else {
+          //Error handling for uploading audio
+          console.error(
+            "Error uploading audio recording to firebase storage:",
+            storageResponse.status,
+            storageResponse.statusText
+          );
+        }
+      // } else if (response.status === 401) {
+        //Unathorized error ,user needs to log in again
+        console.error("Unauthorized. Please log in again.");
+        //Maybe navigate the user to a login screen
+        navigation.navigate("Home");
+      // } else {
+        //HANDLE OTHER STATUS CODES ECT
+        console.error(
+          "Error uploading recording: ",
+          response.status,
+          response.statusText
+        );
+      // }
+
+      //Reseting the audio and AudioTitle
       setRecording(null);
-      setAudioTitle(" ");
-
-      // Now, you can save the URL to Firebase Firestore or perform other actions as needed
+      setAudioTitle("");
     } catch (error) {
-      console.error("Error stopping or uploading recording:", error);
-      // Handle the error as needed
+      if (error.message === "Request timeout") {
+        //Handle timeout error
+        console.error("Request timed out. Please try again.");
+      } else if (error.message === "Network request failed ") {
+        //Network error ,send alert to user
+        Alert.alert("Please Check your Network Connection ");
+        console.error(
+          "Network request failed . Please check you internet connection "
+        );
+      } else {
+        console.error("An error occured:", error);
+      }
     }
-  };
+  } //end of stop recording function
+  
+   //Get the duration
+   function getDurationFormatted(millis) {
+    const minutes = millis / 1000 / 60;
+    const minutesDisplay = Math.floor(minutes);
+    const seconds = Math.round((minutes - minutesDisplay) * 60);
+    const secondsDisplay = seconds < 10 ? `0${seconds}` : seconds;
+    return `${minutesDisplay}:${secondsDisplay}`;
+  }
+
 
   //Playing Sounds
   async function playSound(downloadURL) {

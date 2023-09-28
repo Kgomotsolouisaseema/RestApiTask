@@ -12,7 +12,7 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
 
   const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
-  
+  const FIREBASE_API_KEY = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g"; // My API key
 
   const  signUpWithEmail = () =>{
     //constructing the request payload (body of the communication) this is my endpoint everything from request body to body: JSON.stringify(requestBody), 
@@ -23,7 +23,7 @@ export default function SignUp() {
     };
 
     //make POST request to Firebase REST API FOR EMAIL AND PASSWORD sign-in . This is my 
-    fetch(`${firebaseBaseUrl}:signUp?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`,{
+    fetch(`${firebaseBaseUrl}:signUp?key=${FIREBASE_API_KEY}`,{
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,10 +48,10 @@ export default function SignUp() {
 
   };
 
-
+  
+//OTHER SING UP FUNCTIONS 
 
   const handleSignUp = async () =>{
-   
     console.log('Signup page')
   };
 

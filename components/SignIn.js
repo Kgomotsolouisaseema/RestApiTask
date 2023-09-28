@@ -18,42 +18,47 @@ export default function SignIn() {
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [userToken, setUserToken] = useState(null);
+
 
    const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
 
-
-  useEffect(()=>{
-
-    const firebaseAuthCheckUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`;
-
-    //Make a get request to the Firebase Authentication REST API
-
-    fetch(firebaseAuthCheckUrl , {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        idToken: "USER_ID_TOKEN" , //REPLACE WITH ACTUAL USER ID TOKEN
-        
-      }),
-    })
-    .then((response)=> response.json())
-    .then((data)=>{
-      if(data.users && data.users.length > 0){
-        //User is authenticated, navigate to the "Audio Journal" page
-        navigation.navigate("AudioJournal");
-      }else{
-        //User not Authenticated 
-        Alert.alert("User not signed in");
-      }
-    })
-    .catch((error)=>{
-      Alert.alert("Error checking authentication state");
-      console.log("Error checking authentication state", error);
-    })
-
-  },[])
+   const FIREBASE_API_KEY = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g"; // My API key
+   
+   const checkAuthentication = async () => {
+     try {
+       const firebaseAuthCheckUrl = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${FIREBASE_API_KEY}`;
+   
+       // Make a GET request to the Firebase Authentication REST API to check user authentication
+       const response = await fetch(firebaseAuthCheckUrl, {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+         },
+         body: JSON.stringify({
+           idToken:userToken,
+         }),
+       });
+   
+       if (response.ok) {
+         // User is authenticated, navigate to the "Audio Journal" page
+         setUserToken(userToken); // Store the user's ID token in the state
+         navigation.navigate("AudioJournal");
+       } else {
+         // User not authenticated
+         Alert.alert("User not signed in");
+       }
+     } catch (error) {
+       Alert.alert("Error checking authentication state");
+       console.error("Error checking authentication state", error);
+     }
+   };
+   
+   //  useEffect to run the checkAuthentication function when the component mounts
+   useEffect(() => {
+     checkAuthentication();
+   }, []); // The empty dependency array ensuring it only runs once when the component mounts
+   
  
 
   const  signInWithEmail = () =>{
@@ -65,7 +70,7 @@ export default function SignIn() {
     };
 
     //make POST request to Firebase REST API FOR EMAIL AND PASSWORD sign-in
-    fetch(`${firebaseBaseUrl}:signInWithPassword?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`,{
+    fetch(`${firebaseBaseUrl}:signInWithPassword?key=${FIREBASE_API_KEY}`,{
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -75,6 +80,8 @@ export default function SignIn() {
     .then((response)=> response.json())
     .then((data)=>{
       if(data.idToken){
+        //  set the user's ID token in the state
+        setUserToken(data.idToken);
         //Succefull sign-in , navigate to the next screen
         navigation.navigate("AudioJournal");
       }else{
