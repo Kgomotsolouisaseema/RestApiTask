@@ -8,10 +8,12 @@ import {
   TextInput,
   Image,
   Alert,
+  Pressable,
 } from "react-native";
 import { Audio, getStatusAsync } from "expo-av";
 import theicon from "../assets/theicon.jpg";
-import { TouchableOpacity } from "react-native";
+// import Sound from 'react-native-sound';
+
 
 const RecordingOptions = {
   isMeteringEnabled: true,
@@ -43,20 +45,17 @@ const RecordingOptions = {
 const projectId = "audio-recorder-restapi";
 const apiKey = "AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g";
 const collectionName = "Recordings";
-const  storageBucket= "audio-recorder-restapi.appspot.com";
+const storageBucket = "audio-recorder-restapi.appspot.com";
+
 
 const AudioRecorder = () => {
   const navigation = useNavigation();
-
   const [currentUser, setUser] = useState(null);
   const [recording, setRecording] = useState(null);
   const [audioTitle, setAudioTitle] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [selectedAudioURL, setSelectedAudioURL] = useState(null);
-  const [recordings, setRecordings] = useState([
-    { id: 1, title: "Recording 1" },
-  ]);
-  // const [isRecording, setIsRecording] = useState(false);
+  const [recordings, setRecordings] = useState([]);
   const [sound, setSound] = useState(null);
 
   // const firebaseBaseUrl = "https://identitytoolkit.googleapis.com/v1/accounts";
@@ -65,7 +64,6 @@ const AudioRecorder = () => {
     const firebaseAuthCheckUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
 
     // `https://firestore.googleapis.com/v1/projects/audio-recorder-restapi/databases/(default)/documents/Recordings?key=AIzaSyBOtZWA25ABIVdRDw56v4oo2tRgbssw49g`;
-
 
     const checkUserAuthenticated = async () => {
       try {
@@ -106,37 +104,35 @@ const AudioRecorder = () => {
     checkUserAuthenticated();
   }, []);
 
-  // const loadRecordings = async () => {
-  //   try {
-  //     console.log("loading recordings function")
-  //     const firestoreDatafetch = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
-  //     //Make a Get request to your REST API endpoint to fetch recordings
-  //     const response = await fetch(firestoreDatafetch, {
-  //       method: "GET",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //         Accept: "application/json",
-  //       },
-  //     });
-  //     if (response.ok) {
-  //       //if the response is successfull (status code 200),parse the JSON data
-  //       const data = await response.json();
+  const loadRecordings = async () => {
+    try {
+      console.log("loading recordings function");
+      const firestoreDatafetch = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?key=${apiKey}`;
+      //Make a Get request to your REST API endpoint to fetch recordings
+      const response = await fetch(firestoreDatafetch);
+      const responseData = await response.json();
+      const documents = responseData.documents || [];
+      const recordingsArray = []
+      documents.forEach(document => {
+          const data = document.fields; // Assuming data is stored in "fields"
+          const parts = document.name.split('/');
+          const id = parts[parts.length - 1]; // The last part is the document ID
+          let normalObject = {}
+          for (let key in data) {
+              normalObject = { ...normalObject, [key]: data[key].stringValue }
+          }
+          recordingsArray.push({ id: id, normalObject })
+          setRecordings(recordingsArray); //update state with loaded recordeings
+      });
+     
+    } catch (error) {
+      console.error("Error loading recordings: ", error);
+    }
+  };
 
-  //       //Assume that the api response returns an array of recordings
-  //       setRecording(data); //update state with loaded recordeings
-  //     } else {
-  //       console.error("Error loading recordings:", response.statusText);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error loading recordings: ", error);
-  //   }
-  // };
-
-  // useEffect(() => {
-  //   loadRecordings();
-  // }, []);
-
-  
+  useEffect(() => {
+    loadRecordings();
+  }, []);
 
   async function startRecording() {
     try {
@@ -159,19 +155,7 @@ const AudioRecorder = () => {
     }
   }
 
-  const timeoutDuration = 300000; // Timeout duration in milliseconds
-
-  // Define a function to create a timeout promise
-  function createTimeoutPromise(timeout) {
-    return new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("Request timed out")); // You can customize the error message
-      }, timeout);
-    });
-  }
-
-  const timeoutPromise = createTimeoutPromise(timeoutDuration);
-
+  //FUNCTION FOR STOP RECORDING AUDIO
   async function stopRecording() {
     console.log("Stopping recording..");
 
@@ -189,52 +173,58 @@ const AudioRecorder = () => {
         allowsRecordingIOS: false,
       });
 
-        const {status } = await recording.createNewLoadedSoundAsync();
-        
-        // console.log("Recording uploading success:", responseData);
+      const { status } = await recording.createNewLoadedSoundAsync();
 
-        const uri = recording.getURI();
+      // console.log("Recording uploading success:", responseData);
 
-        // Fetch the audio recording file as a Blob
-        const recordingBlob = await fetch(uri).then((res) => res.blob());
+      const uri = recording.getURI();
 
-         // SAVING TO FIREBASE STORAGE ALSO
-         const storageEndpoint = `https://firebasestorage.googleapis.com/v1/b/${storageBucket}/o/${encodeURIComponent(audioTitle)}`;
+      // Fetch the audio recording file as a Blob
+      const recordingBlob = await fetch(uri).then((res) => res.blob());
 
-         const storageResponse = await fetch(storageEndpoint, {
-           method: "POST",
-          headers: {"Content-Type": "application/json"},
-           body: recordingBlob,
-         });
+      //Get the duration
+  function getDurationFormatted(millis) {
+    const minutes = millis / 1000 / 60;
+    const minutesDisplay = Math.floor(minutes);
+    const seconds = Math.round((minutes - minutesDisplay) * 60);
+    const secondsDisplay = seconds < 10 ? `0${seconds}` : seconds;
+    return `${minutesDisplay}:${secondsDisplay}`;
+  }
 
-         const data = await storageResponse.json();
-         console.log(data)
-         try {
-            let recordingUrl = ""
-             const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(audioTitle)}?alt=media&token=${data.downloadTokens}`;
-             recordingUrl = downloadUrl;
-             console.log('File uploaded successfully. Download URL:', recordingUrl);
-             setSelectedAudioURL(recordingUrl);
-         } catch (err){
-             console.log('File did not upload' , err);
-         }
+      // SAVING TO FIREBASE STORAGE ALSO
+      const storageEndpoint = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(
+        audioTitle
+      )}`;
+      const storageResponse = await fetch(storageEndpoint, {
+        method: "POST",
+        body: recordingBlob,
+      });
 
+      const data = await storageResponse.json();
+      console.log(data);
+      try {
+        let recordingUrl = "";
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${storageBucket}/o/${encodeURIComponent(
+          audioTitle
+        )}?alt=media&token=${data.downloadTokens}`;
+        recordingUrl = downloadUrl;
 
         //MAKE AN POST REQUEST TO CREATE A NEW DOCUMENT IN FIRESTORE
         const firestoreEndpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?&key=${apiKey}`;
-       const audipUrl = '12'
         const firestoreData = {
-          "fields": {
-            "title": { 
-            "stringValue": `${audioTitle}` 
+          fields: {
+            title: {
+              stringValue: `${audioTitle}`,
+            },
+            " duration": {
+              stringValue: `${getDurationFormatted(status.durationMillis)}`,
+              // integerValue: status.durationMillis,
+              
+            },
+            " url": {
+              " stringValue": `${recordingUrl}`,
+            },
           },
-          "duration": {
-            "stringValue":`${getDurationFormatted(status.durationMillis)}`
-          },
-            "url": {
-              "stringValue": `${selectedAudioURL}`
-            }
-          }
         };
 
         const firestoreResponse = await fetch(firestoreEndpoint, {
@@ -244,33 +234,35 @@ const AudioRecorder = () => {
           },
           body: JSON.stringify(firestoreData),
         });
+      } catch (err) {
+        console.log("File did not upload", err);
+      }
 
+      console.log("File uploaded successfully.");
 
-       
-
-        if (storageResponse) {
-          //Succefully uploaded the audio to firebase storage
-          console.log("Audio recording uploaded to firebase storage.");
-        } else {
-          //Error handling for uploading audio
-          console.error(
-            "Error uploading audio recording to firebase storage:",
-            storageResponse.status,
-            storageResponse.statusText
-          );
-        }
-      // } else if (response.status === 401) {
-        //Unathorized error ,user needs to log in again
-        console.error("Unauthorized. Please log in again.");
-        //Maybe navigate the user to a login screen
-        navigation.navigate("Home");
-      // } else {
-        //HANDLE OTHER STATUS CODES ECT
+      if (storageResponse) {
+        //Succefully uploaded the audio to firebase storage
+        console.log("Audio recording uploaded to firebase storage.");
+      } else {
+        //Error handling for uploading audio
         console.error(
-          "Error uploading recording: ",
-          response.status,
-          response.statusText
+          "Error uploading audio recording to firebase storage:",
+          storageResponse.status,
+          storageResponse.statusText
         );
+      }
+      // } else if (response.status === 401) {
+      //Unathorized error ,user needs to log in again
+      console.error("Unauthorized. Please log in again.");
+      //Maybe navigate the user to a login screen
+      navigation.navigate("Home");
+      // } else {
+      //HANDLE OTHER STATUS CODES ECT
+      console.error(
+        "Error uploading recording: ",
+        response.status,
+        response.statusText
+      );
       // }
 
       //Reseting the audio and AudioTitle
@@ -290,18 +282,9 @@ const AudioRecorder = () => {
         console.error("An error occured:", error);
       }
     }
-  } //end of stop recording function
-  
-   //Get the duration
-   function getDurationFormatted(millis) {
-    const minutes = millis / 1000 / 60;
-    const minutesDisplay = Math.floor(minutes);
-    const seconds = Math.round((minutes - minutesDisplay) * 60);
-    const secondsDisplay = seconds < 10 ? `0${seconds}` : seconds;
-    return `${minutesDisplay}:${secondsDisplay}`;
   }
 
-
+  
   //Playing Sounds
   async function playSound(downloadURL) {
     try {
@@ -323,6 +306,7 @@ const AudioRecorder = () => {
     }
   }
 
+ 
   useEffect(() => {
     return () => {
       if (sound) {
@@ -338,37 +322,75 @@ const AudioRecorder = () => {
     setAudioTitle(recordings[index].title);
   };
 
-  //edit title function
+  //UPDATE TITLE FUNCTION 
   const updateTitle = async (index, id) => {
     const record = recordings[index];
     console.log("edit btn clicked ", record);
-
+  
     try {
-      await updateDoc(doc(db, "recordings", record.id), {
-        title: audioTitle,
+      const response = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collectionName}?&key=${apiKey}/${id}`, {
+        method: 'PATCH', // Use PATCH or PUT based on your API endpoint requirements
+        headers: {
+          'Content-Type': 'application/json',
+          // Include any authentication headers if required
+        },
+        body: JSON.stringify({
+          title: audioTitle,
+        }),
+      });
+  
+      if (response.ok) {
+        // Update the recordings array in your component state
+        const updatedRecordings = [...recordings];
+        updatedRecordings[index].title = audioTitle;
+        setRecordings(updatedRecordings);
+        setAudioTitle('newValue');
+        // setEditTitle(""); // Clear the edit title state
+      } else {
+        console.error('Error updating recording title:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error updating recording title:', error);
+    }
+  };
+  
+  //https://firestore.googleapis.com/v1/projects/audio-recorder-restapi/databases/(default)/documents/Recordings/DOCUMENT_ID?key=YOUR_API_KEY
+
+//DELETE AUDIO FUNCTION 
+const deleteRecording = async (id) => {
+
+  console.log("delete btn clicked ", id);
+  try {
+    if (id) {
+      // Make a DELETE request to your API endpoint
+      const response = await fetch(`https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/Recordings/${id}`, {
+      method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      const updatedRecordings = [...recordings]; // Create a copy of recordings
-      updatedRecordings[index].title = audioTitle; // Update the title in the copied array
-      setRecordings(updatedRecordings); // Set the updated array
-      setEditTitle(""); // Clear the edit title state
-    } catch (error) {
-      console.error("Error editing recording title", error);
+      if (response.ok) {
+        // If the deletion was successful, update your local state or perform any necessary actions
+        const updatedRecordings = recordings.filter(
+          (recording) => recording.id !== id
+        );
+        setRecordings(updatedRecordings);
+      } else {
+        console.error('Error deleting recording:', response.status);
+      }
+    } else {
+      console.error('Invalid ID for deleting recording');
     }
-  };
+  } catch (error) {
+    console.error('Error deleting recording:', error);
+  }
+};
 
-  const deleteRecording = async (id) => {
-    try {
-      await deleteDoc(doc(db, "recordings", id));
-      const updatedRecordings = recordings.filter(
-        (recording) => recording.id !== id
-      );
-      setRecordings(updatedRecordings);
-    } catch (error) {
-      console.error("Error deleting recording", error);
-    }
-  };
 
+
+
+//LOGOUT FUNCTION 
   const logout = async () => {
     try {
       await auth.signOut().then(() => {
@@ -378,8 +400,10 @@ const AudioRecorder = () => {
     } catch (error) {
       console.error("Error signing in with Google", error);
     }
-  }; //google end bracket
+  };
 
+
+//END OF THE FUNCTIONS
   return (
     <View style={styles.container}>
       <TextInput
@@ -389,11 +413,11 @@ const AudioRecorder = () => {
         onChangeText={(text) => setAudioTitle(text)}
       />
       <View style={styles.ImageContainer}>
-        <TouchableOpacity onPress={recording ? stopRecording : startRecording}>
+        <Pressable onPress={recording ? stopRecording : startRecording}>
           <Image source={theicon} style={styles.imagePress} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
-
+      <View>
       <FlatList
         data={recordings}
         keyExtractor={(item) => item.id.toString()}
@@ -401,38 +425,47 @@ const AudioRecorder = () => {
           try {
             return (
               <View key={index} style={styles.listItem}>
-                <TouchableOpacity
+                <Pressable
                   style={styles.listItem}
                   onPress={() => setSelectedAudioURL(item.url)}
                 >
-                  <Text>{item.title}</Text>
-                </TouchableOpacity>
+                  <Text>{item.normalObject.title} -</Text>
+                  <Text> {item.normalObject.duration}</Text>
+                </Pressable>
 
                 {editTitle === index ? (
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.btn}
                     title="Edit"
-                    onPress={() => updateTitle(index, item.id)}
+                    // onPress={() => updateTitle(index, item.id)}
+                    onPress={() => {
+                      console.log("Update button clicked - editTitle:", editTitle, "index:", index);
+                      updateTitle(index, item.id);
+                    }}
                   >
                     <Text style={styles.btntext}>Update</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 ) : (
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.btn}
                     title="Edit"
-                    onPress={() => editRecordingTitle(index)}
+                    // onPress={() => editRecordingTitle(index)}
+                    onPress={() => {
+                      console.log("Edit button clicked - editTitle:", editTitle, "index:", index);
+                      editRecordingTitle(index);
+                    }}
                   >
                     <Text style={styles.btntext}>Edit</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 )}
 
-                <TouchableOpacity
+                <Pressable
                   style={styles.btn}
                   title="Delete"
                   onPress={() => deleteRecording(item.id)}
                 >
                   <Text style={styles.btntext}>Delete</Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             );
           } catch (error) {
@@ -441,19 +474,16 @@ const AudioRecorder = () => {
           }
         }}
       />
-      <View>
-        <TouchableOpacity
-          style={styles.titleNew}
-          title="Play"
-          onPress={() => playSound(selectedAudioURL)}
-        >
-          <Text style={styles.signIn}>Play Sound</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+        <View>
+        <Pressable style={styles.titleNew} title="Logout" onPress={playSound}>
+        <Text style={styles.signIn}>Play Sound</Text>
+      </Pressable>
+        </View>
 
-      <TouchableOpacity style={styles.titleNew} title="Logout" onPress={logout}>
+      <Pressable style={styles.titleNew} title="Logout" onPress={logout}>
         <Text style={styles.signIn}>Log Out</Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 };
